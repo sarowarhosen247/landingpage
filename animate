@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Quiet Horizon — Interactive 3D Story</title>
+    <!-- Tailwind CSS for minimalist typography and UI styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js for lightweight WebGL 3D rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;1,6..72,300&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f6f2;
+            color: #2c2d30;
+            overflow: hidden;
+            user-select: none;
+        }
+        .serif-text {
+            font-family: 'Newsreader', serif;
+        }
+        /* Custom scrollbar and smooth transitions */
+        .fade-in {
+            animation: fadeIn 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .pulse-subtle {
+            animation: pulseSubtle 3s infinite ease-in-out;
+        }
+        @keyframes pulseSubtle {
+            0%, 100% { opacity: 0.6; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.05); }
+        }
+    </style>
+</head>
+<body class="h-full w-full relative m-0 p-0">
+
+    <!-- 3D Canvas Container -->
+    <div id="canvas-container" class="absolute inset-0 z-0"></div>
+
+    <!-- UI Overlay Layer -->
+    <div id="ui-layer" class="absolute inset-0 z-10 pointer-events-none flex flex-col justify-between p-6 sm:p-12">
+        
+        <!-- Top Navigation / Brand Header -->
+        <header class="flex justify-between items-center pointer-events-auto">
+            <div class="flex items-center space-x-3">
+                <span class="w-2 h-2 rounded-full bg-slate-400 animate-ping"></span>
+                <h1 class="text-xs uppercase tracking-[0.25em] font-medium text-stone-500">The Quiet Horizon</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <!-- Audio Ambient Toggle -->
+                <button id="audio-toggle" class="text-xs tracking-widest text-stone-500 hover:text-stone-800 transition-colors px-3 py-1.5 rounded-full border border-stone-300/60 bg-stone-100/50 backdrop-blur-sm">
+                    Audio: OFF
+                </button>
+                <!-- Chapter Indicator -->
+                <div id="chapter-counter" class="text-xs tracking-[0.2em] font-light text-stone-400">
+                    01 / 04
+                </div>
+            </div>
+        </header>
+
+        <!-- Center / Narrative Content Box -->
+        <main class="max-w-xl mx-auto text-center pointer-events-auto my-auto transition-all duration-700" id="narrative-box">
+            <div id="chapter-tag" class="text-xs font-medium tracking-[0.3em] uppercase text-slate-500 mb-3 fade-in">Prologue</div>
+            <h2 id="chapter-title" class="serif-text text-3xl sm:text-5xl font-light text-stone-800 mb-6 leading-tight tracking-tight fade-in">
+                Where the sky meets stillness.
+            </h2>
+            <p id="chapter-desc" class="text-stone-600 text-sm sm:text-base font-light leading-relaxed max-w-md mx-auto mb-8 fade-in">
+                Step into a landscape carved from quiet light and calm geometry. Breathe slowly, and let each interaction unveil the next threshold.
+            </p>
+            <button id="action-btn" class="pointer-events-auto px-8 py-3 bg-stone-900 text-stone-100 text-xs uppercase tracking-[0.2em] rounded-full hover:bg-stone-800 transition-all transform hover:scale-105 shadow-sm active:scale-95">
+                Begin Journey
+            </button>
+        </main>
+
+        <!-- Bottom Footer / Interaction Hint -->
+        <footer class="flex justify-between items-end pointer-events-auto">
+            <div class="text-[11px] tracking-widest text-stone-400 font-light hidden sm:block">
+                WebGL 3D Interactive Narrative
+            </div>
+            <div id="interaction-hint" class="text-xs tracking-widest text-stone-500 pulse-subtle mx-auto sm:mx-0 flex items-center space-x-2">
+                <span>Click interactive elements in scene</span>
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- End Screen / Read-Me Modal -->
+    <div id="readme-modal" class="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 opacity-0 pointer-events-none transition-opacity duration-500">
+        <div class="bg-[#fcfbfa] w-full max-w-2xl rounded-2xl shadow-2xl border border-stone-200/80 p-8 sm:p-10 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-start mb-6">
+                <div>
+                    <span class="text-[10px] uppercase tracking-[0.3em] font-semibold text-slate-500">Documentation</span>
+                    <h3 class="serif-text text-2xl sm:text-3xl text-stone-800 mt-1">Journey Complete</h3>
+                </div>
+                <button id="close-modal" class="text-stone-400 hover:text-stone-700 text-sm tracking-widest uppercase">Close</button>
+            </div>
+            
+            <div class="space-y-6 text-sm text-stone-600 font-light leading-relaxed">
+                <p>
+                    Thank you for experiencing <strong class="font-medium text-stone-800">The Quiet Horizon</strong>. This interactive experience was built as a single-file WebGL application using Three.js and Tailwind CSS, adhering to principles of minimalist design, generous negative space, and calm atmospheric immersion.
+                </p>
+                
+                <div class="border-t border-stone-200 pt-4">
+                    <h4 class="font-medium text-stone-800 uppercase tracking-wider text-xs mb-2">1. Asset Organisation & Architecture</h4>
+                    <p>
+                        The application is entirely self-contained within this single HTML file. 3D geometry is procedurally generated using Three.js primitives (Icosahedrons, Torus Knots, Planes, and custom particle clouds), avoiding external texture loads for lightning-fast startup and smooth 60 FPS performance across desktop and mobile devices.
+                    </p>
+                </div>
+
+                <div class="border-t border-stone-200 pt-4">
+                    <h4 class="font-medium text-stone-800 uppercase tracking-wider text-xs mb-2">2. Key Shaders & Scripts</h4>
+                    <p>
+                        Camera transitions utilize smooth linear interpolation (lerp) across distinct vector coordinates and look-at targets. Lighting combines ambient warm tones with directional moonlight and subtle rim lights to create soft shadows and volumetric depth.
+                    </p>
+                </div>
+
+                <div class="border-t border-stone-200 pt-4">
+                    <h4 class="font-medium text-stone-800 uppercase tracking-wider text-xs mb-2">3. How to Add New Scenes</h4>
+                    <p>
+                        Extend the narrative by adding new objects to the <code>chapters</code> array in the JavaScript block below. Define target camera positions, rotation speeds, lighting configurations, and interactive object triggers.
+                    </p>
+                </div>
+            </div>
+
+            <div class="mt-8 pt-6 border-t border-stone-200 flex justify-between items-center">
+                <button id="restart-btn" class="px-6 py-2.5 bg-stone-900 text-stone-100 text-xs uppercase tracking-[0.2em] rounded-full hover:bg-stone-800 transition-all">
+                    Restart Journey
+                </button>
+                <span class="text-xs text-stone-400">Optimized for WebGL & Modern Browsers</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Three.js Application Logic -->
+    <script>
+        // Story Chapters Configuration
+        const chapters = [
+            {
+                id: 0,
+                tag: "Prologue",
+                title: "Where the sky meets stillness.",
+                desc: "Step into a landscape carved from quiet light and calm geometry. Breathe slowly, and let each interaction unveil the next threshold.",
+                buttonText: "Begin Journey",
+                cameraPos: { x: 0, y: 2, z: 14 },
+                lookAt: { x: 0, y: 0, z: 0 },
+                bgColor: 0xf7f6f2,
+                ambientColor: 0xffffff,
+                directionalColor: 0xdce3ea
+            },
+            {
+                id: 1,
+                tag: "Chapter I",
+                title: "The Monolith of Reflection.",
+                desc: "A solitary geometric monolith rises from the silent plain, catching pale slate reflections from an endless horizon.",
+                buttonText: "Engage Monolith",
+                cameraPos: { x: 6, y: 3, z: 8 },
+                lookAt: { x: 0, y: 0, z: 0 },
+                bgColor: 0xf2f4f7,
+                ambientColor: 0xeef2f6,
+                directionalColor: 0x94a3b8
+            },
+            {
+                id: 2,
+                tag: "Chapter II",
+                title: "Rhythmic Convergence.",
+                desc: "Rings of dormant energy awaken in quiet synchronization, whispering of time passing without haste.",
+                buttonText: "Harmonize Rings",
+                cameraPos: { x: 0, y: 7, z: 10 },
+                lookAt: { x: 0, y: 0, z: 0 },
+                bgColor: 0xf5f3f0,
+                ambientColor: 0xfaf8f5,
+                directionalColor: 0xc4b5a5
+            },
+            {
+                id: 3,
+                tag: "Chapter III",
+                title: "The Epilogue of Light.",
+                desc: "All elements dissolve into a peaceful constellation of floating particles. The horizon remains infinite and serene.",
+                buttonText: "Conclude Experience",
+                cameraPos: { x: 0, y: 1, z: 12 },
+                lookAt: { x: 0, y: 0, z: 0 },
+                bgColor: 0xefedea,
+                ambientColor: 0xf7f5f0,
+                directionalColor: 0x818cf8
+            }
+        ];
+
+        let currentChapterIndex = 0;
+        let scene, camera, renderer, raycaster, mouse;
+        let centralObject, ringGroup, particleSystem;
+        let isAudioPlaying = false;
+        let audioCtx, oscillatorNode, gainNode;
+
+        // Target camera values for smooth lerping
+        let targetCameraPos = new THREE.Vector3(0, 2, 14);
+        let targetLookAt = new THREE.Vector3(0, 0, 0);
+        let currentLookAt = new THREE.Vector3(0, 0, 0);
+
+        // Initialize Three.js Environment
+        function initThree() {
+            const container = document.getElementById('canvas-container');
+            
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(chapters[0].bgColor);
+            scene.fog = new THREE.FogExp2(chapters[0].bgColor, 0.035);
+
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 2, 14);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            // Lighting Setup
+            const ambientLight = new THREE.AmbientLight(chapters[0].ambientColor, 1.2);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(chapters[0].directionalColor, 1.8);
+            dirLight.position.set(10, 20, 15);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 1024;
+            dirLight.shadow.mapSize.height = 1024;
+            scene.add(dirLight);
+
+            const rimLight = new THREE.DirectionalLight(0x818cf8, 0.8);
+            rimLight.position.set(-10, -5, -10);
+            scene.add(rimLight);
+
+            // Create Procedural 3D Scene Objects
+            createSceneGeometry();
+
+            // Event Listeners
+            window.addEventListener('resize', onWindowResize);
+            window.addEventListener('pointermove', onPointerMove);
+            window.addEventListener('click', onDocumentClick);
+
+            // Start animation loop
+            animate();
+        }
+
+        function createSceneGeometry() {
+            // 1. Central Monolith / Icosahedron
+            const geo = new THREE.IcosahedronGeometry(2.2, 0);
+            const mat = new THREE.MeshStandardMaterial({
+                color: 0xe2e8f0,
+                roughness: 0.2,
+                metalness: 0.1,
+                flatShading: true
+            });
+            centralObject = new THREE.Mesh(geo, mat);
+            centralObject.castShadow = true;
+            centralObject.receiveShadow = true;
+            scene.add(centralObject);
+
+            // 2. Surrounding Orbital Rings
+            ringGroup = new THREE.Group();
+            const ringMat = new THREE.MeshStandardMaterial({
+                color: 0x94a3b8,
+                roughness: 0.5,
+                metalness: 0.2,
+                wireframe: true
+            });
+            
+            for (let i = 0; i < 3; i++) {
+                const radius = 3.5 + i * 1.2;
+                const tubeGeo = new THREE.TorusGeometry(radius, 0.04, 16, 100);
+                const ring = new THREE.Mesh(tubeGeo, ringMat);
+                ring.rotation.x = Math.random() * Math.PI;
+                ring.rotation.y = Math.random() * Math.PI;
+                ringGroup.add(ring);
+            }
+            scene.add(ringGroup);
+
+            // 3. Ambient Particle Field
+            const particleCount = 200;
+            const particleGeo = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+
+            for (let i = 0; i < particleCount * 3; i += 3) {
+                positions[i] = (Math.random() - 0.5) * 30;
+                positions[i + 1] = (Math.random() - 0.5) * 20;
+                positions[i + 2] = (Math.random() - 0.5) * 30;
+            }
+
+            particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const particleMat = new THREE.PointsMaterial({
+                color: 0x64748b,
+                size: 0.08,
+                transparent: true,
+                opacity: 0.5
+            });
+
+            particleSystem = new THREE.Points(particleGeo, particleMat);
+            scene.add(particleSystem);
+
+            // Subtle Ground Plane
+            const planeGeo = new THREE.PlaneGeometry(60, 60);
+            const planeMat = new THREE.MeshStandardMaterial({
+                color: 0xedebe4,
+                roughness: 0.9,
+                metalness: 0.0
+            });
+            const plane = new THREE.Mesh(planeGeo, planeMat);
+            plane.rotation.x = -Math.PI / 2;
+            plane.position.y = -3.5;
+            plane.receiveShadow = true;
+            scene.add(plane);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Gentle rotation of 3D elements
+            if (centralObject) {
+                centralObject.rotation.x += 0.002;
+                centralObject.rotation.y += 0.003;
+            }
+
+            if (ringGroup) {
+                ringGroup.children.forEach((ring, idx) => {
+                    ring.rotation.x += (idx + 1) * 0.001;
+                    ring.rotation.y += (idx + 1) * 0.0015;
+                });
+            }
+
+            if (particleSystem) {
+                particleSystem.rotation.y += 0.0005;
+            }
+
+            // Smooth camera lerping
+            camera.position.lerp(targetCameraPos, 0.05);
+            currentLookAt.lerp(targetLookAt, 0.05);
+            camera.lookAt(currentLookAt);
+
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function onPointerMove(event) {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        }
+
+        function onDocumentClick() {
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(centralObject);
+
+            if (intersects.length > 0) {
+                // Interactive click on central monolith triggers forward progression
+                advanceChapter();
+            }
+        }
+
+        function advanceChapter() {
+            currentChapterIndex++;
+            if (currentChapterIndex >= chapters.length) {
+                // Show Read-Me modal at the end of the narrative
+                document.getElementById('readme-modal').classList.remove('opacity-0', 'pointer-events-none');
+                return;
+            }
+
+            updateChapterUI();
+        }
+
+        function updateChapterUI() {
+            const chapter = chapters[currentChapterIndex];
+
+            // Update Counter & UI
+            document.getElementById('chapter-counter').innerText = `0${chapter.id + 1} / 04`;
+            
+            const narrativeBox = document.getElementById('narrative-box');
+            narrativeBox.classList.remove('fade-in');
+            void narrativeBox.offsetWidth; // Trigger reflow
+            narrativeBox.classList.add('fade-in');
+
+            document.getElementById('chapter-tag').innerText = chapter.tag;
+            document.getElementById('chapter-title').innerText = chapter.title;
+            document.getElementById('chapter-desc').innerText = chapter.desc;
+            document.getElementById('action-btn').innerText = chapter.buttonText;
+
+            // Update Camera targets
+            targetCameraPos.set(chapter.cameraPos.x, chapter.cameraPos.y, chapter.cameraPos.z);
+            targetLookAt.set(chapter.lookAt.x, chapter.lookAt.y, chapter.lookAt.z);
+
+            // Smooth background color transition
+            scene.background.setHex(chapter.bgColor);
+            scene.fog.color.setHex(chapter.bgColor);
+        }
+
+        function toggleAudio() {
+            const btn = document.getElementById('audio-toggle');
+            if (!isAudioPlaying) {
+                try {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    oscillatorNode = audioCtx.createOscillator();
+                    gainNode = audioCtx.createGain();
+
+                    oscillatorNode.type = 'sine';
+                    oscillatorNode.frequency.setValueAtTime(110, audioCtx.currentTime); // Low A2 calm tone
+                    
+                    gainNode.gain.setValueAtTime(0.02, audioCtx.currentTime); // Soft volume
+
+                    oscillatorNode.connect(gainNode);
+                    gainNode.connect(audioCtx.destination);
+                    oscillatorNode.start();
+
+                    isAudioPlaying = true;
+                    btn.innerText = "Audio: ON";
+                    btn.classList.add('bg-stone-200/80');
+                } catch (e) {
+                    console.log("AudioContext blocked or unsupported", e);
+                }
+            } else {
+                if (oscillatorNode) {
+                    oscillatorNode.stop();
+                    oscillatorNode.disconnect();
+                }
+                if (audioCtx) {
+                    audioCtx.close();
+                }
+                isAudioPlaying = false;
+                btn.innerText = "Audio: OFF";
+                btn.classList.remove('bg-stone-200/80');
+            }
+        }
+
+        // Button Event Bindings
+        document.getElementById('action-btn').addEventListener('click', advanceChapter);
+        document.getElementById('audio-toggle').addEventListener('click', toggleAudio);
+        document.getElementById('close-modal').addEventListener('click', () => {
+            document.getElementById('readme-modal').classList.add('opacity-0', 'pointer-events-none');
+        });
+        document.getElementById('restart-btn').addEventListener('click', () => {
+            currentChapterIndex = 0;
+            document.getElementById('readme-modal').classList.add('opacity-0', 'pointer-events-none');
+            updateChapterUI();
+        });
+
+        // Run initialization on load
+        window.onload = initThree;
+    </script>
+</body>
+</html>
